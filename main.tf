@@ -3,6 +3,7 @@ provider "aws" {
 }
 
 
+// VPC
 resource "aws_vpc" "prod_vpc" {
   cidr_block = "10.0.0.0/16"
 
@@ -11,6 +12,8 @@ resource "aws_vpc" "prod_vpc" {
   }
 }
 
+
+// Subnet 
 resource "aws_subnet" "subnet_1" {
   vpc_id            = aws_vpc.prod_vpc.id
   cidr_block        = "10.0.0.0/24"
@@ -21,6 +24,8 @@ resource "aws_subnet" "subnet_1" {
   }
 }
 
+
+// Internet Gateway
 resource "aws_internet_gateway" "gw" {
   vpc_id = aws_vpc.prod_vpc.id
 
@@ -29,6 +34,8 @@ resource "aws_internet_gateway" "gw" {
   }
 }
 
+
+// Route Table
 resource "aws_route_table" "prod_route_table" {
   vpc_id = aws_vpc.prod_vpc.id
 
@@ -52,6 +59,8 @@ resource "aws_route_table_association" "subnet_assoc" {
   route_table_id = aws_route_table.prod_route_table.id
 }
 
+
+// Security Group
 resource "aws_security_group" "nextwork_sg" {
   name        = "NextWork Security Group"
   description = "A Security Group for the NextWork VPC."
@@ -78,6 +87,7 @@ resource "aws_security_group" "nextwork_sg" {
   }
 }
 
+// new way of ingress and egress
 # resource "aws_vpc_security_group_ingress_rule" "inbound" {
 #   security_group_id = aws_security_group.nextwork-sg.id
 #   cidr_ipv4         = "0.0.0.0/0"
@@ -94,16 +104,31 @@ resource "aws_security_group" "nextwork_sg" {
 #   to_port           = 0
 # }
 
+
+// Network ACL
 resource "aws_network_acl" "acl" {
-  vpc_id = aws_vpc.prod_vpc
-
-  egress {
-
-  }
+  vpc_id = aws_vpc.prod_vpc.id
+  subnet_ids = [aws_subnet.subnet_1.id]
 
   ingress {
-    
+    protocol   = "-1"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
   }
+
+  egress {
+    protocol   = "-1"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "0.0.0.0/0"
+    from_port  = 0
+    to_port    = 0
+  }
+
+  
 
   tags = {
     Name = "NextWork ACL"
