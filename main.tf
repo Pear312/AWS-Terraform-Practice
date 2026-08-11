@@ -86,22 +86,32 @@ resource "aws_security_group" "nextwork_sg" {
   }
 }
 
-// new way of ingress and egress
-# resource "aws_vpc_security_group_ingress_rule" "inbound" {
-#   security_group_id = aws_security_group.nextwork-sg.id
-#   cidr_ipv4         = "0.0.0.0/0"
-#   from_port         = 80
-#   ip_protocol       = "TCP"
-#   to_port           = 80
-# }
+// Private security group
+resource "aws_security_group" "nextwork_sg_private" {
+  name        = "NextWork Private Security Group"
+  description = "A Security Group for the NextWork Private subnet."
+  vpc_id      = aws_vpc.prod_vpc.id
 
-# resource "aws_vpc_security_group_egress_rule" "outbound" {
-#   security_group_id = aws_security_group.nextwork-sg.id
-#   cidr_ipv4         = "0.0.0.0/0"
-#   from_port         = 0
-#   ip_protocol       = "-1" # semantically equivalent to all ports
-#   to_port           = 0
-# }
+  ingress {
+    description = "SSH from public security group"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    security_groups = [aws_security_group.nextwork_sg.id]
+  }
+
+  egress {
+    description = "Allow all outbound traffic"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "NextWork Private Security Group"
+  }
+}
 
 
 // Network ACL
@@ -172,3 +182,39 @@ resource "aws_network_acl" "private_acl" {
     Name = "NextWork Private NACL"
   }
 }
+
+
+#
+# Launch EC2 into both private and public subnets
+#
+
+// Public EC2
+resource "aws_instance" "public_server" {
+  ami = "ami-0bdc7d025135d7b49"
+  instance_type = "t2.micro"
+  key_name = "devKey"
+
+  subnet_id = aws_subnet.subnet_1.id
+
+  vpc_security_group_ids = [aws_security_group.nextwork_sg.id]
+
+  tags = {
+    Name = "NextWork public instance"
+  }
+}
+
+// Private EC2
+resource "aws_instance" "private_server" {
+  ami = "ami-0bdc7d025135d7b49"
+  instance_type = "t2.micro"
+  key_name = "devKey"
+
+  subnet_id = aws_subnet.Private_subnet.id
+
+  vpc_security_group_ids = [aws_security_group.nextwork_sg_private.id]
+
+  tags = {
+    Name = "NextWork private instance"
+  }
+}
+
