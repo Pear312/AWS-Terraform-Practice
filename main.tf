@@ -18,6 +18,7 @@ resource "aws_subnet" "subnet_1" {
   vpc_id            = aws_vpc.prod_vpc.id
   cidr_block        = "10.0.0.0/24"
   availability_zone = "us-east-1a"
+  map_public_ip_on_launch = true
 
   tags = {
     Name = "NextWork Public Subnet"
@@ -73,6 +74,14 @@ resource "aws_security_group" "nextwork_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     description = "Allow all outbound traffic"
     from_port   = 0
@@ -97,6 +106,14 @@ resource "aws_security_group" "nextwork_sg_private" {
     from_port   = 22
     to_port     = 22
     protocol    = "tcp"
+    security_groups = [aws_security_group.nextwork_sg.id]
+  }
+
+  ingress {
+    description = "All ICMP"
+    from_port = -1
+    to_port = -1
+    protocol = "icmp"
     security_groups = [aws_security_group.nextwork_sg.id]
   }
 
@@ -177,6 +194,30 @@ resource "aws_route_table_association" "private_subnet_assoc" {
 resource "aws_network_acl" "private_acl" {
   vpc_id = aws_vpc.prod_vpc.id
   subnet_ids = [aws_subnet.Private_subnet.id]
+
+  ingress {
+    protocol   = "icmp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "10.0.0.0/24"
+
+    from_port = 0
+    to_port = 0
+    icmp_type = -1
+    icmp_code = -1
+  }
+
+  egress {
+    protocol   = "icmp"
+    rule_no    = 100
+    action     = "allow"
+    cidr_block = "10.0.0.0/24"
+    
+    from_port = 0
+    to_port = 0
+    icmp_type = -1
+    icmp_code = -1
+  }
 
   tags = {
     Name = "NextWork Private NACL"
